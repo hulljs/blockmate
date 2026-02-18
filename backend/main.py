@@ -241,7 +241,7 @@ async def verify_user(
                 stt_score = fuzz.ratio(text.lower(), phrase.lower())
                 print(f"DEBUG: Content Score: {stt_score}")
                 
-                if stt_score < 85: # Strict Threshold for content match
+                if stt_score < 99: # Strict Threshold for content match
                      os.remove(tmp_wav_path)
                      return {
                          "verified": False,
