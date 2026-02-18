@@ -5,7 +5,7 @@ import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adap
 import { WalletModalProvider, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { clusterApiUrl, Keypair } from '@solana/web3.js';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, Shield, CheckCircle, AlertTriangle, Fingerprint, RefreshCw, LogIn, PlusCircle, Copy } from 'lucide-react';
+import { Mic, Shield, CheckCircle, AlertTriangle, Fingerprint, RefreshCw, LogIn, PlusCircle, Copy, HelpCircle, X } from 'lucide-react';
 import { generateMnemonic } from 'bip39';
 import axios from 'axios';
 import bs58 from 'bs58';
@@ -14,6 +14,75 @@ import '@solana/wallet-adapter-react-ui/styles.css';
 
 // --- Constants ---
 const API_URL = 'http://localhost:8000'; // Update if needed
+
+// Help Modal Component
+const HelpModal = ({ onClose }) => (
+  <div style={{
+    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+    background: 'rgba(0,0,0,0.85)', zIndex: 1000,
+    display: 'flex', justifyContent: 'center', alignItems: 'center',
+    padding: '2rem'
+  }}>
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="card"
+      style={{
+        maxWidth: '800px', width: '90%', maxHeight: '90vh', overflowY: 'auto',
+        background: '#1a1a1a', border: '1px solid var(--primary-color)',
+        padding: '2rem', position: 'relative'
+      }}
+    >
+      <button
+        onClick={onClose}
+        style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'transparent', padding: '0.5rem' }}
+      >
+        <X size={24} />
+      </button>
+
+      <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem' }}>
+        <Fingerprint color="var(--primary-color)" /> Voice Biometric Technology
+      </h2>
+
+      <div style={{ textAlign: 'left', lineHeight: '1.6', opacity: 0.9 }}>
+        <h3 style={{ color: 'var(--primary-color)' }}>1. How the Fingerprint Works</h3>
+        <p>
+          VoiceAuth uses advanced signal processing to extract unique vocal characteristics from your speech.
+          We analyze your voice's <strong>timbre</strong> (MFCCs), <strong>pitch</strong> (Chroma), and <strong>texture</strong> (Spectral Contrast)
+          to generate a mathematical "Voice Print". This print is a multi-dimensional vector that acts like a fingerprint for your voice.
+        </p>
+
+        <h3 style={{ color: 'var(--primary-color)' }}>2. What is Collected?</h3>
+        <ul style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>
+          <li><strong>Audio Features:</strong> We extract numerical coefficients representing your vocal tract shape.</li>
+          <li><strong>No Raw Audio:</strong> The actual audio recording is processed in memory and immediately discarded. It is never permanently stored.</li>
+        </ul>
+
+        <h3 style={{ color: 'var(--primary-color)' }}>3. Storage & Privacy</h3>
+        <p>
+          The system stores only the <strong>mathematical feature vector</strong> (e.g., an array of numbers like <code>[0.12, -0.45, ...]</code>).
+          This vector cannot be reversed to recreate your original voice recording, ensuring your biometric data remains secure even if the database is compromised.
+        </p>
+
+        <h3 style={{ color: 'var(--primary-color)' }}>4. Verification Process (Dual-Layer Security)</h3>
+        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '8px', marginTop: '1rem' }}>
+          <p><strong>Layer 1: Content Verification (Anti-Replay)</strong></p>
+          <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>
+            We use Speech-to-Text to ensure you are saying the exact randomized phrase shown on screen.
+            This prevents attackers from using pre-recorded audio of you saying other things.
+            You must achieve a <strong>95% text match</strong>.
+          </p>
+          <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '0.5rem 0' }} />
+          <p><strong>Layer 2: Biometric verification</strong></p>
+          <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>
+            If the text matches, we compare your new voice print against your enrolled print using <strong>Cosine Similarity</strong>.
+            The system requires a similarity score of <strong>&gt; 90%</strong> to grant access.
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  </div>
+);
 
 // Simple Audio Visualizer Component
 const AudioVisualizer = ({ stream }) => {
@@ -92,6 +161,7 @@ function AppContent() {
   const [score, setScore] = useState(null);
   const [audioBlob, setAudioBlob] = useState(null);
   const [stream, setStream] = useState(null); // Add stream state for visualizer
+  const [showHelp, setShowHelp] = useState(false); // Help Modal State
 
   // Custom Wallet State (for users without adapter)
   const [generatedWallet, setGeneratedWallet] = useState(null);
@@ -257,14 +327,29 @@ function AppContent() {
             <p style={{ margin: 0, opacity: 0.7 }}>Biometric MFA for Solana</p>
           </div>
         </div>
-        {!generatedWallet && <WalletMultiButton />}
-        {generatedWallet && (
-          <div style={{ padding: '0.5rem', border: '1px solid var(--primary-color)', borderRadius: '8px' }}>
-            <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>App Wallet Active</span>
-            <div style={{ fontWeight: 'bold' }}>{generatedWallet.address.slice(0, 4)}...{generatedWallet.address.slice(-4)}</div>
-          </div>
-        )}
+
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <button
+            onClick={() => setShowHelp(true)}
+            title="Technology Details"
+            style={{ background: 'transparent', padding: '0.5rem', border: '1px solid rgba(255,255,255,0.2)' }}
+          >
+            <HelpCircle size={20} />
+          </button>
+
+          {!generatedWallet && <WalletMultiButton />}
+          {generatedWallet && (
+            <div style={{ padding: '0.5rem', border: '1px solid var(--primary-color)', borderRadius: '8px' }}>
+              <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>App Wallet Active</span>
+              <div style={{ fontWeight: 'bold' }}>{generatedWallet.address.slice(0, 4)}...{generatedWallet.address.slice(-4)}</div>
+            </div>
+          )}
+        </div>
       </header>
+
+      <AnimatePresence>
+        {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+      </AnimatePresence>
 
       {!activePublicKey ? (
         <div style={{ textAlign: 'center', padding: '4rem' }}>
